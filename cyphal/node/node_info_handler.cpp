@@ -1,9 +1,8 @@
-#if (defined(STM32G) || defined(STM32G4) || defined(STM32G0))
 #include "node_info_handler.h"
 
-#ifdef STM32G4
+#if defined(STM32G4) || defined(STM32G474xx) || defined(STM32_G)
 #include "stm32g4xx_ll_utils.h"
-#else
+#elif defined(STM32G0) || defined(STM32G)
 #include "stm32g0xx_ll_utils.h"
 #endif
 
@@ -30,9 +29,17 @@ NodeInfoReader::NodeInfoReader(
     strcpy((char*)node_info.name.elements, name.c_str());
     node_info.name.count = name.size();
 
+#if defined(STM32G) || defined(STM32G4) || defined(STM32G0) || defined(STM32G474xx) || defined(STM32_G)
     uint32_t word0 = LL_GetUID_Word0();
     uint32_t word1 = LL_GetUID_Word1();
     uint32_t word2 = LL_GetUID_Word2();
+#else
+    uint32_t word0 = 0;
+    uint32_t word1 = 1;
+    uint32_t word2 = 2;
+    cyphal_node_unique_id(word0, word1, word2);
+#endif
+
     memcpy(node_info.unique_id, &word0, 4);
     memcpy(node_info.unique_id + 4, &word1, 4);
     memcpy(node_info.unique_id + 8, &word2, 4);
@@ -48,4 +55,3 @@ void NodeInfoReader::handler(
 #pragma GCC diagnostic pop
     interface->send_response(&node_info, transfer);
 }
-#endif
