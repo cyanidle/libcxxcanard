@@ -1,7 +1,8 @@
-#if (defined(STM32G474xx) || defined(STM32_G))
 #include "node_info_handler.h"
 
+#if (defined(STM32G474xx) || defined(STM32_G))
 #include "stm32g4xx_ll_utils.h"
+#endif
 
 NodeInfoReader::NodeInfoReader(
     InterfacePtr interface,
@@ -26,9 +27,17 @@ NodeInfoReader::NodeInfoReader(
     strcpy((char*)node_info.name.elements, name.c_str());
     node_info.name.count = name.size();
 
+#if (defined(STM32G474xx) || defined(STM32_G))
     uint32_t word0 = LL_GetUID_Word0();
     uint32_t word1 = LL_GetUID_Word1();
     uint32_t word2 = LL_GetUID_Word2();
+#else
+    uint32_t word0 = 0;
+    uint32_t word1 = 1;
+    uint32_t word2 = 2;
+    cyphal_node_unique_id(word0, word1, word2);
+#endif
+
     memcpy(node_info.unique_id, &word0, 4);
     memcpy(node_info.unique_id + 4, &word1, 4);
     memcpy(node_info.unique_id + 8, &word2, 4);
@@ -40,4 +49,5 @@ void NodeInfoReader::handler(
 ) {
     interface->send_response<NodeInfoResponse>(&node_info, transfer);
 }
-#endif
+
+

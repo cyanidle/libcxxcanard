@@ -11,6 +11,8 @@
 TYPE_ALIAS(NodeInfoRequest, uavcan_node_GetInfo_Request_1_0)
 TYPE_ALIAS(NodeInfoResponse, uavcan_node_GetInfo_Response_1_0)
 
+extern void cyphal_node_unique_id(uint32_t& a, uint32_t& b, uint32_t& c);
+
 class NodeInfoReader : public AbstractSubscription<NodeInfoRequest> {
 private:
     NodeInfoResponse::Type node_info;
