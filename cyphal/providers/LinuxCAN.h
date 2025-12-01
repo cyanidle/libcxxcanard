@@ -18,7 +18,7 @@ public:
     using Handler = const std::string&;
 
 private:
-    std::mutex canard_mutex;
+    std::recursive_mutex canard_mutex;
     int socketcan_handler;
     pollfd can_pollfd;
     LinuxCAN(Handler can_interface, size_t queue_len, const UtilityConfig& utilities);
