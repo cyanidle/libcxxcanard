@@ -49,20 +49,16 @@ void CyphalInterface::start_threads(uint64_t tx_delay_micros) {
     threads_terminate_flag.store(false);
 
     rx_thread = std::thread([=]() {
-        std::cout << "Started RX thread" << std::endl;
         while(!threads_terminate_flag.load()) {
             this->provider->can_loop(true);  // no_tx=true
         }
-        std::cout << "Finished RX thread" << std::endl;
         is_rx_terminated.store(true);
     });
     tx_thread = std::thread([=]() {
-        std::cout << "Started TX thread" << std::endl;
         while(!threads_terminate_flag.load()) {
             this->provider->process_canard_tx();
             usleep(tx_delay_micros);
         }
-        std::cout << "Finished TX thread" << std::endl;
         is_tx_terminated.store(true);
     });
 
