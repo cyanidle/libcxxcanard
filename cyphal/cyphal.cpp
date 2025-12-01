@@ -71,13 +71,13 @@ void CyphalInterface::start_threads(uint64_t tx_delay_micros) {
     is_rx_terminated.store(false);
     is_tx_terminated.store(false);
 
-    rx_thread = std::thread([=]() {
+    rx_thread = std::thread([this]() {
         while(!threads_terminate_flag.load()) {
             this->provider->can_loop(true);  // no_tx=true
         }
         is_rx_terminated.store(true);
     });
-    tx_thread = std::thread([=]() {
+    tx_thread = std::thread([this, tx_delay_micros]() {
         while(!threads_terminate_flag.load()) {
             this->provider->process_canard_tx();
             usleep(tx_delay_micros);
