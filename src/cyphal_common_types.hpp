@@ -34,6 +34,10 @@
 #include <uavcan/si/sample/angular_velocity/Scalar_1_0.hpp>
 #include <uavcan/si/unit/angle/Scalar_1_0.hpp>
 #include <uavcan/si/unit/angular_velocity/Scalar_1_0.hpp>
+#include <uavcan/node/Heartbeat_1_0.hpp>
+
+#include <voltbro/foc/state_simple_1_0.hpp>
+#include <voltbro/foc/command_1_0.hpp>
 
 
 
@@ -75,3 +79,7 @@ using AngleSampleScalar = uavcan_si_sample_angle_Scalar_1_0;
 using AngularVelocitySampleScalar = uavcan_si_sample_angular_velocity_Scalar_1_0;
 using AngleUnitScalar = uavcan_si_unit_angle_Scalar_1_0;
 using AngularVelocityUnitScalar = uavcan_si_unit_angular_velocity_Scalar_1_0;
+
+using Heartbeat = uavcan_node_Heartbeat_1_0;
+using FocState = voltbro_foc_state_simple_1_0;
+using FOCCommand = voltbro_foc_command_1_0;
