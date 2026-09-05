@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cyphal/definitions.h"
+
 #if defined(STM32G0)
 #include "stm32g0xx_hal.h"
 #elif defined(STM32G4)

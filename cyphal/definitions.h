@@ -2,6 +2,12 @@
 
 #include <functional>
 
+// Some projects (e.g. SixStep) define STM32G / STM32_G for the G4 series
+// instead of STM32G4. Normalize so the G4 HAL paths below actually compile.
+#if !defined(STM32G4) && !defined(STM32G0) && (defined(STM32G) || defined(STM32_G))
+#define STM32G4
+#endif
+
 #if defined(STM32G4)
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_fdcan.h"
