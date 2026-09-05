@@ -73,8 +73,9 @@ public:
 
     void accept(CanardRxTransfer* transfer) override {
         CyphalPayload object{};
-        interface.deserialize_transfer<CyphalPayload>(&object, transfer);
-        callback(object, transfer);
+        if (interface.deserialize_transfer<CyphalPayload>(&object, transfer)) {
+            callback(object, transfer);
+        }
     }
 
     ~CyphalCallbackSubscription() override {

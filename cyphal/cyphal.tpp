@@ -101,15 +101,17 @@ inline void CyphalInterface::send_request(
 }
 
 template <typename CyphalPayload>
-inline void CyphalInterface::deserialize_transfer(
+inline bool CyphalInterface::deserialize_transfer(
     CyphalPayload* obj,
     CanardRxTransfer* transfer
 ) const {
     using TypeInfo = CyphalTypeTraits<CyphalPayload>;
-    size_t inout_buf_size = TypeInfo::extent;
+    size_t inout_buf_size = transfer->payload_size;
     if (TypeInfo::deserializer(obj, static_cast<uint8_t*>(transfer->payload), &inout_buf_size) < 0) {
         utilities.error_handler();
+        return false;
     }
+    return true;
 }
 
 template <typename CyphalPayload>

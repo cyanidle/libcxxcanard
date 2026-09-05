@@ -62,8 +62,9 @@ public:
         //       Its somehow related to flto step? Since it appears at linking step after flto logs,
         //       even with "GNU push ignore warning" pragmas. Weird stuff.
         Type object{};
-        interface->deserialize_transfer<T>(&object, transfer);
-        handler(object, transfer);
+        if (interface->deserialize_transfer<T>(&object, transfer)) {
+            handler(object, transfer);
+        }
     }
 
     virtual ~AbstractSubscription() {

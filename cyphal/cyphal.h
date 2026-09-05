@@ -285,7 +285,7 @@ public:
         CanardPriority priority = CanardPriorityNominal
     ) const;
     template <typename CyphalPayload>
-    inline void deserialize_transfer(CyphalPayload* obj, CanardRxTransfer* transfer)
+    inline bool deserialize_transfer(CyphalPayload* obj, CanardRxTransfer* transfer)
         const;
 };
 
