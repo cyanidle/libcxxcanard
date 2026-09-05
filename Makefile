@@ -33,3 +33,9 @@ host-docs:  ## <dev only> Захостить документация на 8000 
 build:  ## <dev only> Собрать библиотку локально с compile_commands.json
 	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S . -B build
 	cmake  --build build
+
+test:  ## Прогнать host-тесты
+	cmake -S . -B build
+	cmake --build build
+	$(CXX) -std=c++17 -I. -Ilibs -pthread tests/*.cpp build/liblibcxxcanard.a -o build/run_tests
+	./build/run_tests
