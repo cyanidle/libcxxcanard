@@ -4,6 +4,10 @@
 
 #include "FDCAN_generic.h"
 
+// Both hardware RX FIFOs are 3 deep; drain them fully plus some slack for
+// frames arriving mid-loop, then defer the rest to the next can_loop call.
+constexpr size_t RX_DRAIN_LIMIT = 8;
+
 uint32_t G4CAN::len_to_dlc(size_t len) {
     return CanardFDCANLengthToDLC[len];
 }
@@ -13,18 +17,29 @@ size_t G4CAN::dlc_to_len(uint32_t dlc) {
 }
 
 void G4CAN::can_loop(bool no_tx) {
-    uint32_t fifo_fill_level = HAL_FDCAN_GetRxFifoFillLevel(handler, FDCAN_RX_FIFO0);
-    while (fifo_fill_level != 0) {
-        CanardFrame frame;
-        uint8_t RxData[64] = {};
-        bool has_read = read_frame(&frame, static_cast<void*>(RxData));
-        if (!has_read)
+    CanardFrame frame;
+    uint8_t RxData[64] = {};
+    // Drain both RX FIFOs (read_frame picks whichever is non-empty), but not
+    // forever: under sustained traffic the rest is picked up on the next call.
+    for (size_t drained = 0; drained < RX_DRAIN_LIMIT; drained++) {
+        if (!read_frame(&frame, static_cast<void*>(RxData))) {
             break;
+        }
         process_canard_rx(&frame);
     }
 
     if (!no_tx) {
         process_canard_tx();
+    }
+
+    // Polling can fall behind the hardware FIFOs; report lost frames.
+    if (__HAL_FDCAN_GET_FLAG(handler, FDCAN_FLAG_RX_FIFO0_MESSAGE_LOST)) {
+        __HAL_FDCAN_CLEAR_FLAG(handler, FDCAN_FLAG_RX_FIFO0_MESSAGE_LOST);
+        utilities.error_handler();
+    }
+    if (__HAL_FDCAN_GET_FLAG(handler, FDCAN_FLAG_RX_FIFO1_MESSAGE_LOST)) {
+        __HAL_FDCAN_CLEAR_FLAG(handler, FDCAN_FLAG_RX_FIFO1_MESSAGE_LOST);
+        utilities.error_handler();
     }
 
     static FDCAN_ProtocolStatusTypeDef fdcan_status;
@@ -36,7 +51,6 @@ void G4CAN::can_loop(bool no_tx) {
 
 bool G4CAN::read_frame(CanardFrame* rxf, void* data) {
     uint8_t* RxData = static_cast<uint8_t*>(data);
-    // may want to check 2 FIFOs in the future
     uint32_t rx_fifo = -1;
     if (HAL_FDCAN_GetRxFifoFillLevel(handler, FDCAN_RX_FIFO0)) {
         rx_fifo = FDCAN_RX_FIFO0;
@@ -51,6 +65,7 @@ bool G4CAN::read_frame(CanardFrame* rxf, void* data) {
     FDCAN_RxHeaderTypeDef RxHeader = {};
     if (HAL_FDCAN_GetRxMessage(handler, rx_fifo, &RxHeader, RxData) != HAL_OK) {
         utilities.error_handler();
+        return false;
     }
 
     rxf->extended_can_id = RxHeader.Identifier;
