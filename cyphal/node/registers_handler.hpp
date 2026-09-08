@@ -4,6 +4,8 @@
 #include <functional>
 #include <utility>
 #include <array>
+#include <string_view>
+#include <type_traits>
 
 #include "cyphal/cyphal.h"
 #include "cyphal/subscriptions/subscription.h"
@@ -24,14 +26,26 @@ using RegisterCallback = std::function<void(
 )>;
 using RegisterDefinition = std::pair<std::string, RegisterCallback>;
 
+// Non-owning opt-in storage. Names and callback must outlive the handler.
 template<size_t N>
+struct StaticRegisters {
+    const std::array<std::string_view, N>& names;
+    void (*callback)(size_t, const uavcan_register_Value_1_0&,
+                     uavcan_register_Value_1_0&, RegisterAccessResponse&);
+};
+
+template<size_t N, typename Storage = std::array<RegisterDefinition, N>>
 class RegistersHandler:
         public AbstractSubscription<RegisterListRequest>,
         public AbstractSubscription<RegisterAccessRequest> {
 private:
-    std::array<RegisterDefinition, N> registers;
+    Storage registers;
+    std::string_view name_at(size_t index) const {
+        if constexpr (std::is_same_v<Storage, StaticRegisters<N>>) return registers.names[index];
+        else return registers[index].first;
+    }
 public:
-    RegistersHandler(std::array<RegisterDefinition, N>&& registers_list, InterfacePtr interface):
+    RegistersHandler(Storage&& registers_list, InterfacePtr interface):
         AbstractSubscription<RegisterListRequest>(
             interface,
             uavcan_register_List_1_0_FIXED_PORT_ID_,
@@ -56,9 +70,9 @@ public:
 
         uavcan_register_Name_1_0 name = {};
 
-        if (register_list_request.index < registers.size()) {
-            const auto& register_name = std::get<std::string>(registers[register_list_request.index]);
-            memcpy(name.name.elements, register_name.c_str(), register_name.size());
+        if (register_list_request.index < N) {
+            const auto register_name = name_at(register_list_request.index);
+            memcpy(name.name.elements, register_name.data(), register_name.size());
             name.name.count = register_name.size();
         }
         register_list_response.name = name;
@@ -77,21 +91,21 @@ public:
         uavcan_register_Value_1_0 value = {};
 
         bool is_found = false;
-        for (auto& register_def : registers) {
-            auto& register_name = std::get<std::string>(register_def);
-            if (register_name.size() != register_access_request.name.name.count) {
-                continue;
-            }
+        for (size_t index = 0; index < N; ++index) {
+            const auto register_name = name_at(index);
+            if (register_name.size() != register_access_request.name.name.count) continue;
             if(memcmp(
-                register_name.c_str(),
+                register_name.data(),
                 register_access_request.name.name.elements,
                 register_access_request.name.name.count
             ) != 0) {
                 continue;
             }
             is_found = true;
-            auto& register_handler = std::get<RegisterCallback>(register_def);
-            register_handler(register_access_request.value, value, register_access_response);
+            if constexpr (std::is_same_v<Storage, StaticRegisters<N>>)
+                registers.callback(index, register_access_request.value, value, register_access_response);
+            else
+                registers[index].second(register_access_request.value, value, register_access_response);
             break;
         }
         if (!is_found) {

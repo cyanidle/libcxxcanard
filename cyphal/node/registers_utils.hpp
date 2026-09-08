@@ -4,6 +4,7 @@
 
 static constexpr uint8_t REGISTER_EMPTY_TAG = 0U;
 static constexpr uint8_t REGISTER_INTEGER32_TAG = 5U;
+static constexpr uint8_t REGISTER_STRING_TAG = 1U;
 static constexpr uint8_t REGISTER_BIT_TAG = 3U;
 static constexpr uint8_t REGISTER_REAL32_TAG = 13U;
 static constexpr uint8_t REGISTER_NATURAL32_TAG = 9U;
@@ -62,4 +63,10 @@ inline void fill_register_natural32(uavcan_register_Value_1_0& out, uint32_t val
     out._tag_ = REGISTER_NATURAL32_TAG;
     out.natural32.value.elements[0] = value;
     out.natural32.value.count = 1;
+}
+
+inline void fill_register_string(uavcan_register_Value_1_0& out, std::string_view value) {
+    out._tag_ = REGISTER_STRING_TAG;
+    memcpy(out._string.value.elements, value.data(), value.size());
+    out._string.value.count = value.size();
 }
