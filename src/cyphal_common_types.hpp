@@ -38,7 +38,10 @@
 
 #include <voltbro/foc/state_simple_1_0.hpp>
 #include <voltbro/foc/command_1_0.hpp>
-
+#include <voltbro/battery/state_1_0.hpp>
+#include <voltbro/battery/buttons_1_0.hpp>
+#include <voltbro/hmi/led_service_1_0.hpp>
+#include <voltbro/hmi/beeper_service_1_0.hpp>
 
 
 using Empty = uavcan_primitive_Empty_1_0;
@@ -83,3 +86,10 @@ using AngularVelocityUnitScalar = uavcan_si_unit_angular_velocity_Scalar_1_0;
 using Heartbeat = uavcan_node_Heartbeat_1_0;
 using FocState = voltbro_foc_state_simple_1_0;
 using FOCCommand = voltbro_foc_command_1_0;
+using BatteryState = voltbro_battery_state_1_0;
+using Buttons = voltbro_battery_buttons_1_0;
+
+using LEDServiceRequest = voltbro_hmi_led_service_Request_1_0;
+using LEDServiceResponse = voltbro_hmi_led_service_Response_1_0;
+using BeeperServiceRequest = voltbro_hmi_beeper_service_Request_1_0;
+using BeeperServiceResponse = voltbro_hmi_beeper_service_Response_1_0;
