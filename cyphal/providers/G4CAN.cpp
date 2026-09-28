@@ -13,6 +13,12 @@ size_t G4CAN::dlc_to_len(uint32_t dlc) {
 }
 
 void G4CAN::can_loop(bool no_tx) {
+    process_canard_rx();
+    if (!no_tx) process_canard_tx();
+    update_fdcan_status();
+}
+
+void G4CAN::process_canard_rx(bool all) {
     uint32_t fifo_fill_level = HAL_FDCAN_GetRxFifoFillLevel(handler, FDCAN_RX_FIFO0);
     while (fifo_fill_level != 0) {
         CanardFrame frame;
@@ -20,13 +26,12 @@ void G4CAN::can_loop(bool no_tx) {
         bool has_read = read_frame(&frame, static_cast<void*>(RxData));
         if (!has_read)
             break;
-        process_canard_rx(&frame);
+        AbstractCANProvider::process_canard_rx(&frame);
+        if (!all) break;
     }
+}
 
-    if (!no_tx) {
-        process_canard_tx();
-    }
-
+void G4CAN::update_fdcan_status() {
     static FDCAN_ProtocolStatusTypeDef fdcan_status;
     HAL_FDCAN_GetProtocolStatus(handler, &fdcan_status);
     if (fdcan_status.BusOff) {
