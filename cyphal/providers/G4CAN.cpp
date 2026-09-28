@@ -17,6 +17,14 @@ size_t G4CAN::dlc_to_len(uint32_t dlc) {
 }
 
 void G4CAN::can_loop(bool no_tx) {
+    process_canard_rx();
+    if (!no_tx) {
+        process_canard_tx();
+    }
+    update_fdcan_status();
+}
+
+void G4CAN::process_canard_rx(bool all) {
     CanardFrame frame;
     uint8_t RxData[64] = {};
     // Drain both RX FIFOs (read_frame picks whichever is non-empty), but not
@@ -25,11 +33,10 @@ void G4CAN::can_loop(bool no_tx) {
         if (!read_frame(&frame, static_cast<void*>(RxData))) {
             break;
         }
-        process_canard_rx(&frame);
-    }
-
-    if (!no_tx) {
-        process_canard_tx();
+        AbstractCANProvider::process_canard_rx(&frame);
+        if (!all) {
+            break;
+        }
     }
 
     // Polling can fall behind the hardware FIFOs; report lost frames.
@@ -41,7 +48,9 @@ void G4CAN::can_loop(bool no_tx) {
         __HAL_FDCAN_CLEAR_FLAG(handler, FDCAN_FLAG_RX_FIFO1_MESSAGE_LOST);
         utilities.error_handler();
     }
+}
 
+void G4CAN::update_fdcan_status() {
     static FDCAN_ProtocolStatusTypeDef fdcan_status;
     HAL_FDCAN_GetProtocolStatus(handler, &fdcan_status);
     if (fdcan_status.BusOff) {

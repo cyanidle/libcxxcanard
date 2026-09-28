@@ -74,6 +74,11 @@ size_t LinuxCAN::dlc_to_len(uint32_t dlc) {
 }
 
 void LinuxCAN::can_loop(bool no_tx) {
+    process_canard_rx();
+    if (!no_tx) process_canard_tx();
+}
+
+void LinuxCAN::process_canard_rx(bool all) {
     CanardFrame frame;
     struct canfd_frame raw_frame {};
 
@@ -83,13 +88,10 @@ void LinuxCAN::can_loop(bool no_tx) {
     }
 
     if (status && (can_pollfd.revents & POLLIN)) {
-        while(read_frame(&frame, static_cast<void*>(&raw_frame))) {
-            process_canard_rx(&frame);
+        while (read_frame(&frame, static_cast<void*>(&raw_frame))) {
+            AbstractCANProvider::process_canard_rx(&frame);
+            if (!all) break;
         }
-    }
-
-    if (!no_tx) {
-        process_canard_tx();
     }
 }
 

@@ -188,6 +188,10 @@ public:
         provider->process_canard_tx();
     }
 
+    void process_canard_rx(bool all=true) { provider->process_canard_rx(all); }
+    void process_canard_tx() { provider->process_canard_tx(); }
+    void update_fdcan_status() { provider->update_fdcan_status(); }
+
     /**
     * Обрабатывать входящие/исходящие сообщения. НЕ бесконечный цикл, характерное использование:
     * ```
