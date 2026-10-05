@@ -9,8 +9,8 @@ The current high-level API is:
 
 - `CyphalInterface` owns the CAN provider, allocator, queues, and subscriptions.
 - `EmbeddedCyphal` derives from `CyphalInterface`; `ArduinoCyphal` derives from `EmbeddedCyphal`.
-- `make_cyphal<T>(...)` is the preferred constructor for embedded nodes because it enables `shared_from_this()`.
-- `AbstractSubscription<T>` remains available for class-style handlers.
+- `make_cyphal<T>(...)` constructs an embedded node with shared ownership and `shared_from_this()` support.
+- `AbstractSubscription<T>` supports class-style handlers.
 - `subscribe(port, callback)` and `subscribe(port, kind, callback)` are available for callback-style handlers.
 - `cyphal_common_types.hpp` provides short aliases such as `UInt32`, `Float32`, `CyphalString`, `Bytes`, and `Empty`.
   Non-Arduino builds also expose `String` as an alias for `CyphalString`; Arduino keeps its own `String`.
@@ -200,3 +200,39 @@ void on_echo_request(const EchoRequest& request, CanardRxTransfer* transfer) {
 - [Arduino examples](examples/Arduino/README.md): minimal message echo, minimal service echo, and full embedded node.
 - [Linux examples](examples/Linux/README.md): SocketCAN peers that talk to the Arduino sketches.
 - [STM32 HAL examples](examples/STM32HAL/README.md): placeholder for direct HAL projects.
+
+
+## Bounded transport servicing
+
+The provider exposes these servicing operations. `CyphalInterface` forwards
+`process_canard_rx`, `process_canard_tx`, and `update_fdcan_status` to its provider.
+
+| Operation | Contract |
+| --- | --- |
+| `process_canard_rx(bool all = true)` | Poll RX and dispatch completed transfers to subscription handlers. `false` consumes at most one CAN frame; a multi-frame transfer needs multiple calls. |
+| `process_canard_tx(bool all = true)` | Process the TX queue. `false` handles at most one queue item, including an expired item. Processing returns when the provider cannot accept a frame; unexpired queued frames remain pending. |
+| `update_fdcan_status()` | Update provider status and invoke its configured error handling. Providers without a hardware status operation implement a no-op. |
+| `can_loop(bool no_tx = false)` | Service RX and, unless `no_tx` is set, TX. G4CAN also updates FDCAN status. |
+| Protected `accept_rx_frame(const CanardFrame&)` | Submit an acquired CAN frame to libcanard, perform transfer reassembly and dispatch completed transfers. |
+
+For a bounded main-loop pass, call RX with `false`, perform application reporting,
+call TX with `false`, then update provider status. One RX frame may complete a
+transfer and run its handler; frame count does not bound the handler's duration.
+
+### Shared allocator arena
+
+An external operation may reuse an O1Allocator arena through this lifecycle:
+
+1. Stop transport processing and hardware access to the arena.
+2. Call `halt()` to release all TX/RX allocations and receive sessions.
+   Subscription descriptors, listeners and node configuration remain registered.
+3. Give the external operation exclusive use of the arena.
+4. Call `reset()` to restore the allocator in the returned arena,
+   discard pending hardware frames, and resume transport.
+
+Subscription descriptors and listeners must be stored outside the reused arena.
+No callback or transport thread may access the allocator between `halt()` and
+`reset()`. `halt()` releases allocations while the allocator is valid; `reset()`
+reinitializes the returned arena without inspecting or freeing its overwritten contents.
+O1Allocator resets in the supplied memory without allocating an arena or
+subscription objects.

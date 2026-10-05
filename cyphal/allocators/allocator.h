@@ -24,5 +24,7 @@ public:
 
     virtual void* allocate(CanardInstance* ins, size_t amount) = 0;
     virtual void free(CanardInstance* ins, void* pointer) = 0;
+    // Called only after all allocations have been released, while transport is stopped.
+    virtual void reset() {}
     virtual ~AbstractAllocator() = default;
 };

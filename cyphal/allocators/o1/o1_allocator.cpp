@@ -31,7 +31,12 @@ void O1Allocator::align_self(size_t size) {
         }
     }
 
-    O1HeapInstance* out = o1heapInit(memory_arena, size);
+    arena_size = size;
+    reset();
+}
+
+void O1Allocator::reset() {
+    O1HeapInstance* out = o1heapInit(memory_arena, arena_size);
     if (out == nullptr) {
         utilities.error_handler();
     }

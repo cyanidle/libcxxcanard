@@ -40,6 +40,37 @@ void CyphalInterface::unsubscribe(CanardPortID port_id, CanardTransferKind kind)
     }
 }
 
+void CyphalInterface::halt() {
+    provider->clear_queue();
+    provider->lock_canard();
+    auto& canard = provider->canard;
+    for (size_t kind = 0; kind < CANARD_NUM_TRANSFER_KINDS; ++kind) {
+        int32_t previous_port = -1;
+        for (;;) {
+            // Find the next port afresh: re-subscribing can rebalance the tree.
+            auto* node = canard.rx_subscriptions[kind];
+            CanardRxSubscription* next = nullptr;
+            while (node != nullptr) {
+                auto* subscription = reinterpret_cast<CanardRxSubscription*>(node);
+                if (subscription->port_id > previous_port) {
+                    next = subscription;
+                    node = node->lr[0];
+                } else node = node->lr[1];
+            }
+            if (next == nullptr) break;
+            previous_port = next->port_id;
+            // canardRxSubscribe frees old sessions and preserves user_reference.
+            if (canardRxSubscribe(&canard, static_cast<CanardTransferKind>(kind),
+                                  next->port_id, next->extent,
+                                  next->transfer_id_timeout_usec, next) < 0) {
+                utilities.error_handler();
+                break;
+            }
+        }
+    }
+    provider->unlock_canard();
+}
+
 void CyphalInterface::loop() {
     provider->can_loop();
 }

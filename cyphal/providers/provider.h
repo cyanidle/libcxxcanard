@@ -62,6 +62,9 @@ protected:
     const UtilityConfig& utilities;
     AllocatorPtr allocator;
 
+    // Feed one received frame into libcanard; transport polling is separate.
+    void accept_rx_frame(const CanardFrame& frame);
+
     AbstractCANProvider(size_t canard_mtu, size_t wire_mtu, const UtilityConfig& utilities)
         : AbstractCANProvider(canard_mtu, wire_mtu, DEFAULT_QUEUE_SIZE, utilities){};
     AbstractCANProvider(
@@ -111,8 +114,7 @@ public:
     virtual void update_fdcan_status() {}
     virtual bool read_frame(CanardFrame*, void* data) = 0;
     virtual int write_frame(const CanardTxQueueItem* ti) = 0;
-    void process_canard_rx(CanardFrame*);
-    void process_canard_tx();
+    void process_canard_tx(bool all = true);
     void clear_queue();
 
     virtual ~AbstractCANProvider();

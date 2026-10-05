@@ -8,7 +8,7 @@ SRC_DIR = DIR / 'cyphal'
 OUT_DIR = DIR / 'src'
 LIBS_DIR = DIR / 'libs'
 
-PRESERVE_OVER_BUILDS = ("nunavut", "reg", "uavcan", "voltbro", "utils.h", "README.md")
+PRESERVE_OVER_BUILDS = ("nunavut", "reg", "uavcan", "voltbro", "utils.h", "README.md", "cyphal_common_types.hpp")
 
 print(f"Clearing <{LIBS_DIR}>")
 for entry in OUT_DIR.glob("*"):
@@ -111,4 +111,4 @@ for lib_entry in arduino_build_data['libs']:
     print(f"Processing {lib_entry}")
     shutil.copytree(LIBS_DIR / lib_entry, OUT_DIR / lib_entry)
 
-shutil.copy2(DIR / 'cyphal_common_types.hpp', OUT_DIR / 'cyphal_common_types.hpp')
+# Keep aliases paired with the bundled Arduino DSDL headers above.
