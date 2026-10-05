@@ -48,7 +48,12 @@ void O1Allocator::align_self(size_t size) {
         }
     }
 
-    O1HeapInstance* out = o1heapInit(memory_arena, size);
+    arena_size = size;
+    reset();
+}
+
+void O1Allocator::reset() {
+    O1HeapInstance* out = o1heapInit(memory_arena, arena_size);
     if (out == nullptr) {
         utilities.error_handler();
     }
@@ -242,7 +247,7 @@ size_t fdcan_dlc_to_len(uint32_t dlc) {
     return 64;
 }
 
-void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
+void AbstractCANProvider::accept_rx_frame(const CanardFrame& frame) {
     CanardRxTransfer transfer = {};
     transfer.payload = nullptr;
 
@@ -252,7 +257,7 @@ void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
     const int8_t accept_result = canardRxAccept(
         &canard,
         utilities.micros_64(),
-        frame,
+        &frame,
         0,
         &transfer,
         &subscription
@@ -280,7 +285,7 @@ void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
     }
 }
 
-void AbstractCANProvider::process_canard_tx() {
+void AbstractCANProvider::process_canard_tx(bool all) {
     lock_canard();
 
     // Look at top of the TX queue of individual CAN frames
@@ -296,6 +301,7 @@ void AbstractCANProvider::process_canard_tx() {
         // After the frame is transmitted or if it has timed out while waiting,
         // pop it from the queue and deallocate:
         canard.memory_free(&canard, canardTxPop(&queue, ti));
+        if (!all) break;
     }
 
     unlock_canard();
@@ -324,6 +330,12 @@ size_t G4CAN::dlc_to_len(uint32_t dlc) {
 }
 
 void G4CAN::can_loop(bool no_tx) {
+    process_canard_rx();
+    if (!no_tx) process_canard_tx();
+    update_fdcan_status();
+}
+
+void G4CAN::process_canard_rx(bool all) {
     uint32_t fifo_fill_level = HAL_FDCAN_GetRxFifoFillLevel(handler, FDCAN_RX_FIFO0);
     while (fifo_fill_level != 0) {
         CanardFrame frame;
@@ -331,13 +343,12 @@ void G4CAN::can_loop(bool no_tx) {
         bool has_read = read_frame(&frame, static_cast<void*>(RxData));
         if (!has_read)
             break;
-        process_canard_rx(&frame);
+        accept_rx_frame(frame);
+        if (!all) break;
     }
+}
 
-    if (!no_tx) {
-        process_canard_tx();
-    }
-
+void G4CAN::update_fdcan_status() {
     static FDCAN_ProtocolStatusTypeDef fdcan_status;
     HAL_FDCAN_GetProtocolStatus(handler, &fdcan_status);
     if (fdcan_status.BusOff) {
@@ -386,9 +397,7 @@ int G4CAN::write_frame(const CanardTxQueueItem* ti) {
     // all mailboxes should be free -
     // https://forum.opencyphal.org/t/uavcan-v0-found-data-transfer-reversal/1476/6
     // "Reduce the number of enqueued frames to 1" - fix to inner priority inversion
-    for (int i = 0; HAL_FDCAN_GetTxFifoFreeLevel(handler) != 3 && i < 3; i++) {
-        delay_cycles(ONE_FULL_FRAME_CYCLES);
-    }  // wait for message to transmit
+    // Non-blocking: the next main-loop pass retries the queued frame.
     if (HAL_FDCAN_GetTxFifoFreeLevel(handler) != 3) {
         return -1;
     }
@@ -449,6 +458,37 @@ void CyphalInterface::unsubscribe(CanardPortID port_id, CanardTransferKind kind)
     if (canardRxUnsubscribe(&provider->canard, kind, port_id) != 1) {
         utilities.error_handler();
     }
+}
+
+void CyphalInterface::halt() {
+    provider->clear_queue();
+    provider->lock_canard();
+    auto& canard = provider->canard;
+    for (size_t kind = 0; kind < CANARD_NUM_TRANSFER_KINDS; ++kind) {
+        int32_t previous_port = -1;
+        for (;;) {
+            // Find the next port afresh: re-subscribing can rebalance the tree.
+            auto* node = canard.rx_subscriptions[kind];
+            CanardRxSubscription* next = nullptr;
+            while (node != nullptr) {
+                auto* subscription = reinterpret_cast<CanardRxSubscription*>(node);
+                if (subscription->port_id > previous_port) {
+                    next = subscription;
+                    node = node->lr[0];
+                } else node = node->lr[1];
+            }
+            if (next == nullptr) break;
+            previous_port = next->port_id;
+            // canardRxSubscribe frees old sessions and preserves user_reference.
+            if (canardRxSubscribe(&canard, static_cast<CanardTransferKind>(kind),
+                                  next->port_id, next->extent,
+                                  next->transfer_id_timeout_usec, next) < 0) {
+                utilities.error_handler();
+                break;
+            }
+        }
+    }
+    provider->unlock_canard();
 }
 
 void CyphalInterface::loop() {

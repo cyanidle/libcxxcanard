@@ -97,6 +97,7 @@ public:
     size_t dlc_to_len(uint32_t) override {
         return 0;
     }
+    void process_canard_rx(bool) override {}
     void can_loop(bool) override {}
     bool read_frame(CanardFrame*, void*) override {
         return false;
@@ -113,7 +114,7 @@ public:
     void feed(const Captured& captured) {
         CanardFrame frame = captured.frame;
         frame.payload = const_cast<uint8_t*>(captured.data.data());
-        process_canard_rx(&frame);
+        accept_rx_frame(frame);
     }
 };
 

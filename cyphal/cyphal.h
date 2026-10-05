@@ -166,6 +166,16 @@ public:
     void clear_queue() {
         provider->clear_queue();
     }
+    /** Release all TX/RX allocations and receive sessions, retaining subscriptions/listeners.
+     * Stop transport and callbacks before calling. The allocator arena may then be reused;
+     * subscription descriptors/listeners must reside outside that arena.
+     */
+    void halt();
+    /** Restore allocator state after halt(), including after external arena reuse.
+     * No transport access is permitted between halt() and reset(). Resume transport
+     * only after reset() completes; subscriptions and node configuration are retained.
+     */
+    void reset() { provider->allocator->reset(); }
     /**
     * Есть ли еще не отправленные фреймы?
     */
@@ -189,7 +199,7 @@ public:
     }
 
     void process_canard_rx(bool all=true) { provider->process_canard_rx(all); }
-    void process_canard_tx() { provider->process_canard_tx(); }
+    void process_canard_tx(bool all = true) { provider->process_canard_tx(all); }
     void update_fdcan_status() { provider->update_fdcan_status(); }
 
     /**

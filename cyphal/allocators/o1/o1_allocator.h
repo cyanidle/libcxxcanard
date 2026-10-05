@@ -12,6 +12,7 @@ class O1Allocator : public AbstractAllocator {
 private:
     O1HeapInstance* o1heap = nullptr;
     void* memory_arena;
+    size_t arena_size = 0;
     void align_self(size_t size);
     bool is_self_allocated = false;
 
@@ -30,6 +31,7 @@ public:
      */
     explicit O1Allocator(size_t size, const UtilityConfig& utilities);
     ~O1Allocator() override;
+    void reset() override;
 
     void* allocate(CanardInstance* ins, size_t amount) override;
     void free(CanardInstance* ins, void* pointer) override;

@@ -1,7 +1,7 @@
 #include "provider.h"
 #include "cyphal/interfaces.h"
 
-void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
+void AbstractCANProvider::accept_rx_frame(const CanardFrame& frame) {
     CanardRxTransfer transfer = {};
     transfer.payload = nullptr;
 
@@ -11,7 +11,7 @@ void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
     const int8_t accept_result = canardRxAccept(
         &canard,
         utilities.micros_64(),
-        frame,
+        &frame,
         0,
         &transfer,
         &subscription
@@ -39,7 +39,7 @@ void AbstractCANProvider::process_canard_rx(CanardFrame* frame) {
     }
 }
 
-void AbstractCANProvider::process_canard_tx() {
+void AbstractCANProvider::process_canard_tx(bool all) {
     lock_canard();
 
     // Look at top of the TX queue of individual CAN frames
@@ -55,6 +55,7 @@ void AbstractCANProvider::process_canard_tx() {
         // After the frame is transmitted or if it has timed out while waiting,
         // pop it from the queue and deallocate:
         canard.memory_free(&canard, canardTxPop(&queue, ti));
+        if (!all) break;
     }
 
     unlock_canard();

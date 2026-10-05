@@ -33,7 +33,7 @@ void G4CAN::process_canard_rx(bool all) {
         if (!read_frame(&frame, static_cast<void*>(RxData))) {
             break;
         }
-        AbstractCANProvider::process_canard_rx(&frame);
+        accept_rx_frame(frame);
         if (!all) {
             break;
         }
@@ -99,9 +99,7 @@ int G4CAN::write_frame(const CanardTxQueueItem* ti) {
     // all mailboxes should be free -
     // https://forum.opencyphal.org/t/uavcan-v0-found-data-transfer-reversal/1476/6
     // "Reduce the number of enqueued frames to 1" - fix to inner priority inversion
-    for (int i = 0; HAL_FDCAN_GetTxFifoFreeLevel(handler) != 3 && i < 3; i++) {
-        delay_cycles(ONE_FULL_FRAME_CYCLES);
-    }  // wait for message to transmit
+    // Non-blocking: the next main-loop pass retries the queued frame.
     if (HAL_FDCAN_GetTxFifoFreeLevel(handler) != 3) {
         return -1;
     }

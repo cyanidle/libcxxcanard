@@ -89,7 +89,7 @@ void LinuxCAN::process_canard_rx(bool all) {
 
     if (status && (can_pollfd.revents & POLLIN)) {
         while (read_frame(&frame, static_cast<void*>(&raw_frame))) {
-            AbstractCANProvider::process_canard_rx(&frame);
+            accept_rx_frame(frame);
             if (!all) break;
         }
     }
