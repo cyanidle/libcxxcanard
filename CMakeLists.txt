@@ -5,6 +5,8 @@ set (CMAKE_CXX_STANDARD 17)
 option(LIBCXXCANARD_POSITION_INDEPENDENT_CODE "Build libcxxcanard and bundled C libraries as PIC" OFF)
 
 include_directories(.)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/cyphal)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/src)
 file(GLOB_RECURSE SOURCES "cyphal/*.c" "cyphal/*.cpp")
 
 if(DEFINED ENV{<COMMON_LIBS_DIR>})
