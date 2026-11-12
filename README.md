@@ -212,7 +212,7 @@ The provider exposes these servicing operations. `CyphalInterface` forwards
 | `process_canard_rx(bool all = true)` | Poll RX and dispatch completed transfers to subscription handlers. `false` consumes at most one CAN frame; a multi-frame transfer needs multiple calls. |
 | `process_canard_tx(bool all = true)` | Process the TX queue. `false` handles at most one queue item, including an expired item. Processing returns when the provider cannot accept a frame; unexpired queued frames remain pending. |
 | `update_fdcan_status()` | Update provider status and invoke its configured error handling. Providers without a hardware status operation implement a no-op. |
-| `can_loop(bool no_tx = false)` | Service RX and, unless `no_tx` is set, TX. G4CAN also updates FDCAN status. |
+| `can_loop(bool no_tx = false)` | Service RX and, unless `no_tx` is set, TX. G4CAN handles at most one RX frame and one TX queue item per call, then updates FDCAN status. |
 | Protected `accept_rx_frame(const CanardFrame&)` | Submit an acquired CAN frame to libcanard, perform transfer reassembly and dispatch completed transfers. |
 
 For a bounded main-loop pass, call RX with `false`, perform application reporting,

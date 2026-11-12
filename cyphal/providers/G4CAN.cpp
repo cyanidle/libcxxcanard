@@ -4,10 +4,6 @@
 
 #include "FDCAN_generic.h"
 
-// Both hardware RX FIFOs are 3 deep; drain them fully plus some slack for
-// frames arriving mid-loop, then defer the rest to the next can_loop call.
-constexpr size_t RX_DRAIN_LIMIT = 8;
-
 uint32_t G4CAN::len_to_dlc(size_t len) {
     return CanardFDCANLengthToDLC[len];
 }
@@ -17,9 +13,11 @@ size_t G4CAN::dlc_to_len(uint32_t dlc) {
 }
 
 void G4CAN::can_loop(bool no_tx) {
-    process_canard_rx();
+    process_canard_rx(false);
     if (!no_tx) {
-        process_canard_tx();
+        // A full queue of expired frames must not stall the caller when the
+        // bus cannot accept anything. The next main-loop pass handles it.
+        process_canard_tx(false);
     }
     update_fdcan_status();
 }
@@ -27,9 +25,9 @@ void G4CAN::can_loop(bool no_tx) {
 void G4CAN::process_canard_rx(bool all) {
     CanardFrame frame;
     uint8_t RxData[64] = {};
-    // Drain both RX FIFOs (read_frame picks whichever is non-empty), but not
-    // forever: under sustained traffic the rest is picked up on the next call.
-    for (size_t drained = 0; drained < RX_DRAIN_LIMIT; drained++) {
+    // read_frame picks either non-empty RX FIFO. The default drains until both
+    // are empty; bounded service consumes one frame and defers the rest.
+    for (;;) {
         if (!read_frame(&frame, static_cast<void*>(RxData))) {
             break;
         }
